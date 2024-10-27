@@ -25,7 +25,7 @@ Usage
 
 Türkçe açıklaması 
 
-Bu kodun özeti, SQL injection açıklarını test etmek için GET istekleriyle payload’ları hedef URL’ye gönderip normal yanıttan farklı sonuçlar elde etmeye çalıştığı bir sistem şeklinde açıklanabilir. Aşağıda, bu özetle uyumlu olarak README kısmında kullanabileceğiniz bir açıklama bulabilirsiniz:
+SQL injection açıklarını test etmek için GET istekleriyle payload’ları hedef URL’ye gönderip normal yanıttan farklı sonuçlar elde etmeye çalıştığı bir sistem şeklinde açıklanabilir. Aşağıda, bu özetle uyumlu olarak README kısmında kullanabileceğiniz bir açıklama bulabilirsiniz:
 
 
  SQL Injection Test Aracı
