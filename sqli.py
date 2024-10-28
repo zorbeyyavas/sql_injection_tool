@@ -71,7 +71,7 @@ def test_sql_injection(url, payloads):
             else:
                 print(f"Denendi, ama başarısız oldu. Payload: {obf_payload}")
 
-# Dosya yolunu belirt (Kali için)
+# Dosya yolunu belirt 
 file_path = '/home/kullanıcıadi/dosyanınbulunduğudizin/sorgu.txt'
 
 # Payload dosyasını oku
