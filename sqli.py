@@ -1,5 +1,6 @@
 import requests
 import urllib.parse
+import argparse
 
 # Dosyayı açıp payload'ları okuyan fonksiyon
 def load_payloads(file_path):
@@ -58,7 +59,7 @@ def test_sql_injection(url, payloads):
         
         for obf_payload in obfuscated_payloads:
             test_url = f"{url}{obf_payload}"
-            response = requests.get(test_url, headers=headers, timeout=5 )
+            response = requests.get(test_url, headers=headers, timeout=5)
             print(f"GET isteği gönderildi: {test_url}")
 
             # Yanıt durumu kodunu kontrol et
@@ -71,14 +72,20 @@ def test_sql_injection(url, payloads):
             else:
                 print(f"Denendi, ama başarısız oldu. Payload: {obf_payload}")
 
-# Dosya yolunu belirt 
-file_path = '/home/kullanıcıadi/dosyanınbulunduğudizin/sorgu.txt'
+# Komut satırı argümanlarını işle
+def main():
+    parser = argparse.ArgumentParser(description='SQL Injection Tester')
+    parser.add_argument('-g', '--url', required=True, help='Hedef URL')
+    args = parser.parse_args()
 
-# Payload dosyasını oku
-payloads = load_payloads(file_path)
+    # Dosya yolunu belirt 
+    file_path = '/home/kullanıcıadi/dosyayolu/sorgu.txt'
 
-# Hedef URL'yi belirt
-target_url = input("Hedef URL'yi girin: ")
+    # Payload dosyasını oku
+    payloads = load_payloads(file_path)
 
-# SQL injection testini başlat
-test_sql_injection(target_url, payloads)
+    # SQL injection testini başlat
+    test_sql_injection(args.url, payloads)
+
+if __name__ == "__main__":
+    main()
