@@ -61,3 +61,7 @@ def test_sql_injection(url, payloads, error_messages, user_agents, is_post=False
                 response = future.result()
                 if response and check_response(normal_response_content, response, payload, error_messages):
                     logging.info(f"SQL injection başarılı! Payload: {payload}")
+                    break
+                else:
+                    continue
+                    
