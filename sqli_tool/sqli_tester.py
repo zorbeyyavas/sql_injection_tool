@@ -1,7 +1,6 @@
 import requests
 import logging
 import random
-from concurrent.futures import ThreadPoolExecutor
 from obfuscator import obfuscate_payloads
 
 def get_response(url, headers, method='GET', data=None):
@@ -10,58 +9,57 @@ def get_response(url, headers, method='GET', data=None):
     """
     try:
         if method == 'GET':
-            return requests.get(url, headers=headers, timeout=5)
-        elif method == 'POST':
-            return requests.post(url, headers=headers, data=data, timeout=5)
-    except requests.Timeout:
-        logging.error("İstek zaman aşımına uğradı.")
-    except requests.ConnectionError:
-        logging.error("Bağlantı hatası.")
+            response = requests.get(url, headers=headers, timeout=5)
+        else:
+            response = requests.post(url, headers=headers, data=data, timeout=5)
     except requests.RequestException as e:
-        logging.error(f"İstek sırasında beklenmeyen hata: {e}")
-    return None
+        logging.error(f"HTTP isteği sırasında hata: {e}")
+        return None
+    return response
 
-def check_response(normal_response, response, payload, error_messages):
+def compare_headers(original_headers, injection_headers):
     """
-    Gelen yanıtı normal yanıt ile karşılaştırır ve hata mesajlarını kontrol eder.
+    İki set header'ı karşılaştırır.
     """
-    if not response:
-        return False
-    
-    if response.text != normal_response or any(error in response.text for error in error_messages):
-        logging.warning(f"SQL Enjeksiyonu başarılı! Payload: {payload}")
-        return True
+    for key in original_headers:
+        if key not in injection_headers or original_headers[key] != injection_headers[key]:
+            return True
     return False
 
 def test_sql_injection(url, payloads, error_messages, user_agents, is_post=False, data=None):
     """
-    SQL injection açığını test eden fonksiyon.
+    SQL enjeksiyon testini gerçekleştirir.
     """
-    random_user_agent = random.choice(user_agents) if user_agents else {}
-    headers = {'User-Agent': random_user_agent}
-    
-    normal_response = get_response(url, headers, method='POST' if is_post else 'GET', data=data)
-    if normal_response:
-        normal_response_content = normal_response.text
-        logging.info("Normal yanıt referans olarak alındı.")
-    else:
-        logging.error("Normal yanıt alınamadı, test gerçekleştirilemiyor.")
+    original_response = get_response(url, {'User-Agent': random.choice(user_agents)}, method='POST' if is_post else 'GET', data=data)
+    if original_response is None:
+        logging.error("Orijinal isteğe yanıt alınamadı.")
         return
-    
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        for payload in payloads:
-            obfuscated_payloads = obfuscate_payloads(payload)
-            for obf_payload in obfuscated_payloads:
-                test_url = f"{url}{obf_payload}" if not is_post else url
-                modified_data = data.copy() if is_post else {}
-                if is_post:
-                    modified_data['payload'] = obf_payload
-                future = executor.submit(get_response, test_url, headers, method='POST' if is_post else 'GET', data=modified_data)
-                
-                response = future.result()
-                if response and check_response(normal_response_content, response, payload, error_messages):
-                    logging.info(f"SQL injection başarılı! Payload: {payload}")
-                    break
-                else:
-                    continue
-                    
+
+    original_headers = original_response.request.headers
+    original_content = original_response.text
+
+    for payload in payloads:
+        obfuscated_payloads = obfuscate_payloads(payload)
+
+        for obfuscated_payload in obfuscated_payloads:
+            injected_url = f"{url}{obfuscated_payload}"
+            injection_response = get_response(injected_url, {'User-Agent': random.choice(user_agents)}, method='POST' if is_post else 'GET', data=data)
+
+            if injection_response is None:
+                continue
+
+            injection_headers = injection_response.request.headers
+            header_diff = compare_headers(original_headers, injection_headers)
+
+            if header_diff:
+                logging.info(f"[UYARI] Header farklılığı bulundu: {injected_url}")
+
+            if injection_response.text != original_content:
+                logging.info(f"[UYARI] Yanıt içeriği farklı: {injected_url}")
+                for error in error_messages:
+                    if error in injection_response.text:
+                        logging.info(f"[HATA BULUNDU] Hata mesajı tespit edildi: {injected_url} - {error}")
+
+            # Meta veri karşılaştırması
+            if header_diff or injection_response.text != original_content:
+                logging.info(f"[MUHTEMEL AÇIK] Potansiyel SQL enjeksiyon açığı bulundu: {injected_url}")
