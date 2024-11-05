@@ -1,4 +1,3 @@
-# payload_manager.py
 import logging
 
 def load_payloads(file_path):
@@ -23,6 +22,7 @@ def load_payloads(file_path):
 def load_error_messages(file_path):
     """
     Hata mesajları dosyasını yükler ve liste olarak döner.
+    Dosya bulunamazsa veya boşsa boş bir liste döner.
     """
     try:
         with open(file_path, 'r') as file:
@@ -35,23 +35,24 @@ def load_error_messages(file_path):
     except FileNotFoundError:
         logging.error(f"Hata mesajları dosyası bulunamadı: {file_path}")
     except Exception as e:
-        logging.error(f"Hata mesajları dosyası yüklenirken hata: {e}")
+        logging.error(f"Hata mesajları yüklenirken hata: {e}")
     return []
 
 def load_user_agents(file_path):
     """
-    user agentları yükler ve liste olarak döner.
+    Kullanıcı ajanlarını yükler ve liste olarak döner.
+    Dosya bulunamazsa veya boşsa boş bir liste döner.
     """
     try:
         with open(file_path, 'r') as file:
             user_agents = [line.strip() for line in file if line.strip()]
         if user_agents:
-            logging.info("user agentlar başarıyla yüklendi.")
+            logging.info("User-agent'lar başarıyla yüklendi.")
             return user_agents
         else:
-            logging.warning("user agentlar dosyası boş.")
+            logging.warning("User-agent dosyası boş.")
     except FileNotFoundError:
-        logging.error(f"user agentlar dosyası bulunamadı: {file_path}")
+        logging.error(f"User-agent dosyası bulunamadı: {file_path}")
     except Exception as e:
-        logging.error(f"user agentlar dosyası yüklenirken hata: {e}")
+        logging.error(f"User-agent dosyası yüklenirken hata: {e}")
     return []
